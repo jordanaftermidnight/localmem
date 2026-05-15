@@ -2,17 +2,23 @@
  * Shared theme tokens + small UI primitives.
  */
 
+// Chrome from coolors palette #0c0a3e-7b1e7a-b33f62-f9564f-f3c677.
+// Deep navy base, vivid coral as the LIVE / focus accent, gold for warnings,
+// coral re-used for errors (close enough to a red without breaking the
+// palette's vocabulary). Off-white kept for body text — the gold tone is too
+// saturated for paragraphs.
 export const theme = {
-  bg: "#0b0d10",
-  panelBg: "#141820",
-  panelBorder: "#21262d",
+  bg: "#0c0a3e",
+  panelBg: "#15124f",
+  panelBorder: "#2a2670",
   text: "#e6e8eb",
-  textDim: "#8b949e",
-  accent: "#58a6ff",
-  green: "#22c55e",
-  yellow: "#eab308",
-  red: "#ef4444",
-  purple: "#a78bfa",
+  textDim: "#9a93c8",
+  accent: "#f9564f",
+  green: "#5ad48b",
+  yellow: "#f3c677",
+  red: "#f9564f",
+  purple: "#7b1e7a",
+  rose: "#b33f62",
   mono: "'SF Mono', Menlo, Monaco, 'Courier New', monospace",
 };
 
@@ -40,19 +46,20 @@ export const headerStyle: React.CSSProperties = {
   borderBottom: `1px solid ${theme.panelBorder}`,
 };
 
-// Wing palette. `shared` is always amber to stand out as the cross-agent
-// namespace; everything else gets a deterministic color from `palette` based
-// on a stable hash of the wing name. This lets the dashboard render any
-// user-configured wing without a hardcoded mapping.
+// Wing palette from coolors #b7094c-a01a58-892b64-723c70-5c4d7d-455e89-2e6f95-1780a1-0091ad.
+// 9-color magenta→teal gradient — coherent spectrum, distinguishable hues for
+// up to 9 user-configured wings. `shared` always uses the warm gold from the
+// chrome palette so the cross-agent namespace pops against the cool wing tones.
 const palette: readonly string[] = [
-  "#58a6ff", // blue
-  "#a78bfa", // violet
-  "#22c55e", // green
-  "#f97316", // orange
-  "#ec4899", // pink
-  "#14b8a6", // teal
-  "#fbbf24", // amber-2
-  "#06b6d4", // cyan
+  "#b7094c", // magenta
+  "#a01a58", // wine
+  "#892b64", // mulberry
+  "#723c70", // plum
+  "#5c4d7d", // dusk violet
+  "#455e89", // slate blue
+  "#2e6f95", // steel blue
+  "#1780a1", // teal blue
+  "#0091ad", // cyan teal
 ];
 
 function hashWing(wing: string): number {
@@ -70,7 +77,7 @@ export const wingColors = new Proxy<Record<string, string>>(
   {
     get(_target, prop: string | symbol): string | undefined {
       if (typeof prop !== "string") return undefined;
-      if (prop === "shared") return "#eab308";
+      if (prop === "shared") return "#f3c677";
       return palette[hashWing(prop) % palette.length];
     },
   },
