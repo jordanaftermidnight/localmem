@@ -1,0 +1,46 @@
+# Archives
+*.tar.gz
+
+# Runtime data
+data/
+*.db
+*.db-wal
+*.db-shm
+graph.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual env
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Frontend
+node_modules/
+dashboard/dist/
+
+# Local env / secrets
+.env
+.env.local
+prune.env

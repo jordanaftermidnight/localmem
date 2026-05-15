@@ -1,0 +1,14 @@
+agent: default
+role: Generic agent manifest. Replace `agent` with the wing name configured in
+  localmem.yaml, then list the rooms whose contents should ride along on the
+  layered wake-up L1 prefetch.
+capabilities:
+  - example capability — describe what the agent does
+  - example capability — keep these short and grep-friendly
+constraints:
+  - example constraint — describe what the agent must avoid
+  - example constraint — these surface in wake context
+wake_rooms:
+  # Pull recent high-importance entries from these rooms when the agent wakes.
+  # Use `<wing>:<room>` form. The wing should match this file's agent name.
+  - default:notes

@@ -1,0 +1,100 @@
+# Agent wing namespaces. Each string is one agent's private memory partition.
+# The "shared" wing is always available implicitly for cross-agent context and
+# must not be listed here. Examples: ["assistant"], ["coder", "researcher"].
+wings:
+  - "default"
+
+server:
+  host: "localhost"
+  port: 8781
+  transport: "sse"
+
+storage:
+  base_path: "./data"
+  # Qdrant: "local" runs the embedded path-backed mode (default — single
+  # writer, no network). "server" connects to a remote Qdrant at qdrant_url
+  # and unblocks live embedding migrations + multi-process writers.
+  qdrant_mode: "local"
+  qdrant_path: "./data/qdrant"
+  # qdrant_url: "http://qdrant:6333"
+  # qdrant_api_key: ""
+  sqlite_path: "./data/localmem.db"
+  graph_path: "./data/graph.json"
+
+embedding:
+  model: "all-MiniLM-L6-v2"
+  sparse_model: "Qdrant/bm25"
+  device: "auto"  # "auto", "cpu", "cuda", or "mps"
+
+loading:
+  l1_top_k: 15
+  l1_max_tokens: 120
+  decay_rate_per_day: 0.01
+
+graph:
+  persistence_debounce_seconds: 5
+  max_community_size: 50
+
+concurrency:
+  write_timeout_seconds: 30
+
+logging:
+  level: "INFO"
+  format: "text"  # "text" or "json"
+  # file: "./data/localmem.log"
+  # max_bytes: 10000000
+  # backup_count: 3
+
+intelligence:
+  pattern_min_frequency: 3
+  correlation_window_hours: 24
+  correlation_min_strength: 0.5
+  alert_room: "intelligence-alerts"
+
+dashboard:
+  enabled: false
+  host: "127.0.0.1"
+  port: 8782
+  auth_enabled: false
+  # api_key: ""
+  cors_origins:
+    - "http://localhost:5173"
+  ws_push_interval_seconds: 2.0
+
+# Retention / pruning / archive (v0.3.0). Disabled by default — set enabled: true
+# to activate the consolidation + archive pipeline. See docs/LIFECYCLE.md.
+retention:
+  enabled: false
+
+  default:
+    soft_age_days: 30        # entries older than this are eligible for consolidation
+    max_age_days: 365        # entries older than this transition to cold archive
+    importance_floor: 0.1    # entries with effective importance below this are eligible
+
+  wings:
+    # Per-wing retention overrides. Keys must appear in top-level `wings` (or
+    # be "shared"). `shared` may set max_age_days: null to never archive.
+    shared:
+      soft_age_days: 90
+      max_age_days: null     # never archive — shared is foundational cross-agent context
+      importance_floor: 0.05
+
+  consolidation:
+    group_by: ["wing", "room", "week"]
+    summarizer: "template"   # "template" (deterministic, no deps) or "llm" (Ollama)
+    # llm_model: "qwen2.5:3b"            # bare name → defaults to localhost:11434
+    # llm_model: "ollama://gpu-host:11434/qwen2.5:3b"   # explicit base URL
+    top_n_per_summary: 5
+    min_group_size: 3
+    cron_enabled: true
+    cron_schedule: "0 4 * * *"
+    backpressure_enabled: true
+    trigger_count_per_wing: 10000
+    min_interval_seconds: 300
+
+  archive:
+    enabled: true
+    path: "./data/archive"
+    format: "jsonl.zst"
+    compression_level: 7
+    snapshot_before_transition: true

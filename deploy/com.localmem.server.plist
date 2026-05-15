@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.localmem.server</string>
+
+    <!--
+      sh -c so we can `set -a; . prune.env; set +a` to load the API key
+      into the environment before exec. The `[ -f ... ]` guard means the
+      service still starts cleanly when auth is disabled and prune.env
+      doesn't exist. ${LOCALMEM_API_KEY} is then substituted into
+      localmem.yaml at config-load time.
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>[ -f __CONFIG_DIR__/prune.env ] &amp;&amp; { set -a; . __CONFIG_DIR__/prune.env; set +a; }; exec __INSTALL_DIR__/.venv/bin/localmem-serve __CONFIG_DIR__/localmem.yaml</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__DATA_DIR__</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>__LOG_DIR__/localmem.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__LOG_DIR__/localmem.err</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

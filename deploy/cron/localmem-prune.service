@@ -1,0 +1,13 @@
+[Unit]
+Description=LOCALMEM retention/prune sweep
+After=network.target localmem.service
+Requires=localmem.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/localmem/prune.env
+ExecStart=/bin/sh -c '\
+    curl -fsS -X POST -H "Authorization: Bearer $LOCALMEM_API_KEY" http://127.0.0.1:8782/api/prune/run && \
+    curl -fsS -X POST -H "Authorization: Bearer $LOCALMEM_API_KEY" http://127.0.0.1:8782/api/archive/run'
+StandardOutput=journal
+StandardError=journal

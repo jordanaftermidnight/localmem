@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "localmem"
+version = "0.1.0"
+description = "Local-first multi-agent memory MCP server with hybrid search, behavioral graphs, knowledge triples, and lifecycle management"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "jordanaftermidnight", email = "jordanaftermidnight@gmail.com" },
+]
+keywords = ["mcp", "memory", "agents", "llm", "qdrant", "knowledge-graph", "local-first"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "qdrant-client>=1.12.0",
+    "fastembed>=0.4.0",
+    "sentence-transformers>=3.0.0",
+    "networkx>=3.3",
+    "fastmcp>=2.0.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "aiosqlite>=0.20.0",
+    "zstandard>=0.22",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.5.0",
+    "httpx>=0.27",
+]
+dashboard = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+]
+analytics = [
+    "duckdb>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/jordanaftermidnight/localmem"
+Repository = "https://github.com/jordanaftermidnight/localmem"
+Issues = "https://github.com/jordanaftermidnight/localmem/issues"
+
+[project.scripts]
+localmem = "localmem.cli:main"
+localmem-serve = "localmem.mcp_server:run"
+localmem-dashboard = "localmem.api.app:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/localmem"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

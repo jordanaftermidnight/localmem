@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# localmem pre-commit triad scanner.
+#
+# Blocks any staged change that re-introduces private-project identifiers
+# from the upstream MNEMOSYNE codebase. Override only when you know what
+# you are doing:  LOCALMEM_BYPASS_TRIAD_SCAN=1 git commit ...
+#
+# Patterns are intentionally narrow: case-sensitive whole-word matches for
+# the agent names as identifiers. Lowercase "echo" is too noisy (shell
+# builtin) so only the agent-cased forms are blocked. Run
+# `./.githooks/audit-triad.sh` for a wider sweep across the working tree.
+
+set -euo pipefail
+
+if [[ "${LOCALMEM_BYPASS_TRIAD_SCAN:-0}" == "1" ]]; then
+  echo "pre-commit: LOCALMEM_BYPASS_TRIAD_SCAN=1 — skipping triad scanner" >&2
+  exit 0
+fi
+
+PATTERNS=(
+  '\bIRIS\b'
+  '\bIris\b'
+  '\bSORIEL\b'
+  '\bSoriel\b'
+  '\bsoriel\b'
+  '\bECHO\b'
+  '\bMNEMOSYNE\b'
+  '\bMnemosyne\b'
+  '\bmnemosyne\b'
+)
+
+# Combine into one alternation regex for a single grep pass.
+JOINED="$(IFS='|'; echo "${PATTERNS[*]}")"
+
+# Inspect only added lines in staged diff (lines starting with "+" but not
+# "+++"). This way we don't re-flag content that already exists in HEAD.
+STAGED_ADDITIONS="$(git diff --cached --no-color -U0 -- ':(exclude).githooks/*' \
+  | grep -E '^\+' | grep -v '^\+\+\+' || true)"
+
+if [[ -z "${STAGED_ADDITIONS}" ]]; then
+  exit 0
+fi
+
+HITS="$(echo "${STAGED_ADDITIONS}" | grep -nE "${JOINED}" || true)"
+
+if [[ -n "${HITS}" ]]; then
+  echo "" >&2
+  echo "pre-commit: triad scanner blocked the commit." >&2
+  echo "  The following added lines contain private upstream identifiers:" >&2
+  echo "" >&2
+  echo "${HITS}" | sed 's/^/    /' >&2
+  echo "" >&2
+  echo "  Rewrite to use generic naming (wings are user-configurable;" >&2
+  echo "  intelligence detectors are pluggable). To bypass intentionally:" >&2
+  echo "    LOCALMEM_BYPASS_TRIAD_SCAN=1 git commit ..." >&2
+  echo "" >&2
+  exit 1
+fi

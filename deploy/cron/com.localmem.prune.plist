@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.localmem.prune</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>curl -fsS -X POST -H "Authorization: Bearer ${LOCALMEM_API_KEY}" "http://127.0.0.1:8782/api/prune/run" &amp;&amp; curl -fsS -X POST -H "Authorization: Bearer ${LOCALMEM_API_KEY}" "http://127.0.0.1:8782/api/archive/run"</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>LOCALMEM_API_KEY</key>
+        <string>set-via-launchctl-setenv</string>
+    </dict>
+
+    <!-- Daily at 04:00 local. Adjust if your machine is offline at this time;
+         systemd Persistent=true equivalent on launchd is RunAtLoad+StartCalendarInterval. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/localmem-prune.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/localmem-prune.err</string>
+</dict>
+</plist>

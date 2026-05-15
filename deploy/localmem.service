@@ -1,0 +1,50 @@
+[Unit]
+Description=LOCALMEM Memory Server (MCP over SSE)
+Documentation=file:///opt/localmem/docs/ARCHITECTURE.md
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_USER__
+
+ExecStart=__INSTALL_DIR__/.venv/bin/localmem-serve __CONFIG_DIR__/localmem.yaml
+WorkingDirectory=__DATA_DIR__
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=localmem
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=__DATA_DIR__ __LOG_DIR__
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=2G
+
+# Environment — `-` prefix makes the file optional, so the unit still
+# starts when auth is disabled. When --auth was used at install time the
+# file holds LOCALMEM_API_KEY which is interpolated into localmem.yaml
+# via ${LOCALMEM_API_KEY} substitution.
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-__CONFIG_DIR__/prune.env
+
+[Install]
+WantedBy=multi-user.target
