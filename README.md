@@ -149,10 +149,9 @@ localmem/
 
 - **Python 3.14 + Apple Silicon + sentence-transformers**: the `loky`
   process pool used by sentence-transformers can crash silently at shutdown
-  on Python 3.14 / arm64 macOS. The unit-test suite uses a hash-based
-  embedder and is unaffected. For production runtime, prefer Python 3.12
-  until the upstream issue is resolved, or use the `fastembed`-only path
-  by setting `embedding.model: "Qdrant/bm25"` (sparse-only retrieval).
+  on Python 3.14 / arm64 macOS. Python 3.13 and earlier are unaffected.
+  Either use Python 3.13 (verified end-to-end on this build) or switch to
+  the sparse-only retrieval path via `embedding.model: "Qdrant/bm25"`.
 
 ## License
 

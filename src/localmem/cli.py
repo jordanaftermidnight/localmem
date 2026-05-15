@@ -480,8 +480,8 @@ async def cmd_smoke(args: argparse.Namespace) -> None:
 
 async def cmd_serve(args: argparse.Namespace) -> None:
     """Start the MCP server."""
-    from .mcp_server import run
-    run()
+    from .mcp_server import run_async
+    await run_async(args.config)
 
 
 async def cmd_dashboard(args: argparse.Namespace) -> None:

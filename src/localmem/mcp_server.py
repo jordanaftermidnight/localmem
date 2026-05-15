@@ -1,10 +1,11 @@
-"""LOCALMEM MCP server — FastMCP over SSE with 22 tools."""
+"""localmem MCP server — FastMCP over SSE with 22 tools."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastmcp import FastMCP
@@ -43,6 +44,24 @@ server_start_time: float = 0.0
 write_locks: dict[str, asyncio.Lock] = {}
 retention_worker: object | None = None  # BackgroundWorker; lazy-imported to avoid cycle
 
+# `run()` writes the resolved config here before invoking `mcp.run()`, so the
+# lifespan context manager can find it. None at module-import time so importers
+# (tests, dashboard) don't pay the cost.
+_runtime_config: LocalmemConfig | None = None
+
+
+@asynccontextmanager
+async def _lifespan(_server: FastMCP):
+    """Initialize stores at server startup, shut them down at exit."""
+    if _runtime_config is not None:
+        await initialize_stores(_runtime_config)
+    try:
+        yield
+    finally:
+        if _runtime_config is not None:
+            await shutdown_stores()
+
+
 mcp = FastMCP(
     "localmem",
     instructions=(
@@ -51,6 +70,7 @@ mcp = FastMCP(
         "contradiction detection, layered wake-up context loading, pattern "
         "detection, retention/archive operations, and health/metrics."
     ),
+    lifespan=_lifespan,
 )
 
 
@@ -581,31 +601,38 @@ async def shutdown_stores() -> None:
 
 
 def create_server(config_path: str = "localmem.yaml") -> FastMCP:
-    """Create and configure the MCP server."""
-    cfg = load_config(config_path)
+    """Resolve config and arm the lifespan, returning the configured server.
 
-    @mcp.on_event("startup")
-    async def on_startup():
-        await initialize_stores(cfg)
-
-    @mcp.on_event("shutdown")
-    async def on_shutdown():
-        await shutdown_stores()
-
+    Sets `_runtime_config` so the `_lifespan` context manager (registered on
+    the module-level `mcp`) initializes stores at startup and tears them down
+    at shutdown.
+    """
+    global _runtime_config
+    _runtime_config = load_config(config_path)
     return mcp
 
 
-def run():
-    """Entry point: run the LOCALMEM MCP server."""
-    import sys
+async def run_async(config_path: str = "localmem.yaml") -> None:
+    """Async entry — use this when already inside an asyncio loop (CLI dispatch).
 
-    config_path = sys.argv[1] if len(sys.argv) > 1 else "localmem.yaml"
-    cfg = load_config(config_path)
-    setup_logging(cfg)
-
+    FastMCP 3's blocking `server.run()` calls `anyio.run()`, which collides
+    with an outer `asyncio.run()` in the CLI command runner. The HTTP variants
+    expose async entry points (`run_http_async`) that compose cleanly.
+    """
+    setup_logging(load_config(config_path))
     server = create_server(config_path)
-    server.run(
+    cfg = _runtime_config
+    assert cfg is not None
+    await server.run_http_async(
         transport="sse",
         host=cfg.server.host,
         port=cfg.server.port,
     )
+
+
+def run() -> None:
+    """Sync entry — used by the `localmem-serve` console script (no outer loop)."""
+    import sys
+
+    config_path = sys.argv[1] if len(sys.argv) > 1 else "localmem.yaml"
+    asyncio.run(run_async(config_path))
