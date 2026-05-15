@@ -98,6 +98,8 @@ panels: Health, Entries, Metrics, Alerts, Graph, Wings/Rooms, Triples,
 Diaries, Logs, Admin. Pin/unpin and lifecycle triggers live in Admin.
 Localhost-only by default; flip on bearer auth to expose it remotely.
 
+![localmem dashboard](docs/assets/dashboard.png)
+
 ## Observability
 
 - `localmem health` and `localmem_health` MCP tool — per-wing entry counts,

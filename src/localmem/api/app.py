@@ -261,8 +261,8 @@ async def _push_loop() -> None:
 
 def create_app(cfg: LocalmemConfig | None = None) -> FastAPI:
     app = FastAPI(
-        title="LOCALMEM Dashboard API",
-        version="0.5.1",
+        title="localmem Dashboard API",
+        version="0.1.0",
         lifespan=lifespan,
     )
 
