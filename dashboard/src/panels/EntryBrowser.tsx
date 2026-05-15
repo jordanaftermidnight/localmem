@@ -60,7 +60,7 @@ export function EntryBrowser() {
   const items = hits ? hits.map(h => ({ ...h.entry, score: h.score })) : entries;
 
   return (
-    <div style={{ ...panelStyle, display: "grid", gridTemplateRows: "auto auto 1fr", gap: 8 }}>
+    <div style={{ ...panelStyle, display: "grid", gridTemplateRows: "auto auto 1fr auto", gap: 8 }}>
       <div style={headerStyle}>Entry Browser {filter.wing && `— ${filter.wing}${filter.room ? `/${filter.room}` : ""}`}</div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

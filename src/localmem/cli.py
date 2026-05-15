@@ -929,3 +929,7 @@ def main():
     setup_logging(cfg, level_override=level_override)
 
     asyncio.run(commands[args.command](args))
+
+
+if __name__ == "__main__":
+    main()

@@ -67,6 +67,9 @@ packages = ["src/localmem"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# Integration tests boot a real `localmem serve` subprocess (slow — model
+# download + warm-up). Skipped by default; opt in with `pytest tests/integration`.
+addopts = "--ignore=tests/integration"
 
 [tool.ruff]
 target-version = "py310"

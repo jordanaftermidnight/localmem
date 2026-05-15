@@ -19,6 +19,10 @@ export const theme = {
 export const panelStyle: React.CSSProperties = {
   padding: 12,
   height: "100%",
+  // Without border-box, `height: 100%` + `padding: 12` makes each panel 24px
+  // taller than its dockview frame, pushing footer rows (e.g. EntryBrowser's
+  // prev/next pagination) under the viewport edge.
+  boxSizing: "border-box",
   overflow: "auto",
   background: theme.bg,
   color: theme.text,
