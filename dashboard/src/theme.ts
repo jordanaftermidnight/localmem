@@ -8,7 +8,11 @@
 // palette's vocabulary). Off-white kept for body text — the gold tone is too
 // saturated for paragraphs.
 export const theme = {
-  bg: "#0c0a3e",
+  // Very dark blue, blue-dominant (B > G > R) to read as blue rather than
+  // grayish navy or violet. Low brightness so it's easy on the eyes for
+  // long-running dashboards; deeper than the navy/purple chrome it sits
+  // under so the panels appear lifted.
+  bg: "#0a1428",
   panelBg: "#15124f",
   panelBorder: "#2a2670",
   text: "#e6e8eb",
