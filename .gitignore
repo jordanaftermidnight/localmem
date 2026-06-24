@@ -42,5 +42,11 @@ dashboard/dist/
 
 # Local env / secrets
 .env
+.env.*
 .env.local
 prune.env
+.secrets
+.mcp.json
+
+# Certificates
+*.pem
