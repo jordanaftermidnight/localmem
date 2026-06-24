@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "localmem"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local-first multi-agent memory MCP server with hybrid search, behavioral graphs, knowledge triples, and lifecycle management"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -49,6 +49,11 @@ dashboard = [
 ]
 analytics = [
     "duckdb>=1.0",
+    # Used by archiver._is_safe_sql_where to AST-validate user-supplied
+    # WHERE clauses against DuckDB's grammar. Required whenever query_sql()
+    # is reachable; bundled with the rest of the analytics extras so it
+    # only installs when DuckDB is also installed.
+    "sqlglot>=23.0",
 ]
 
 [project.urls]

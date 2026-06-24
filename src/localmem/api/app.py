@@ -262,7 +262,7 @@ async def _push_loop() -> None:
 def create_app(cfg: LocalmemConfig | None = None) -> FastAPI:
     app = FastAPI(
         title="localmem Dashboard API",
-        version="0.1.0",
+        version="0.1.1",
         lifespan=lifespan,
     )
 
@@ -613,23 +613,35 @@ def _register_routes(app: FastAPI) -> None:
 
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):
-        # Bearer auth via Sec-WebSocket-Protocol subprotocol
-        # ("bearer.<key>"), so the token never appears in the URL,
-        # access logs, or referer headers. Falls back to ?token= query
-        # param if no subprotocol is offered (kept only to surface a
-        # clearer 1008 error on legacy clients — not for new use).
+        # Bearer auth via the Sec-WebSocket-Protocol subprotocol list, NOT
+        # via ?token= query param. The browser sends two values:
+        #     Sec-WebSocket-Protocol: bearer, <token>
+        # The server validates <token> with hmac.compare_digest against the
+        # configured api_key and accepts the upgrade with subprotocol="bearer"
+        # only. The token is never echoed in the 101 Switching Protocols
+        # response — proxy logs, browser devtools, and service workers see
+        # only the literal string "bearer". (Pre-v0.1.1 echoed `bearer.<token>`
+        # — that token leak is fixed by this change. Older dashboard bundles
+        # built before v0.1.1 will fail the handshake; rebuild the frontend.)
         accept_protocol: str | None = None
         if state.config.dashboard.auth_enabled:
             expected = state.config.dashboard.api_key or ""
             offered = [p.strip() for p in ws.scope.get("subprotocols") or []]
             authed = False
-            for proto in offered:
-                if proto.startswith("bearer.") and hmac.compare_digest(
-                    proto[len("bearer."):], expected
-                ):
-                    authed = True
-                    accept_protocol = proto
-                    break
+            if "bearer" in offered:
+                # Token is the OTHER subprotocol value (any non-"bearer" entry).
+                # Constant-time compare against every candidate so the response
+                # latency does not leak which slot the token occupies or how
+                # many slots were attempted.
+                match_found = False
+                for proto in offered:
+                    if proto == "bearer":
+                        continue
+                    if hmac.compare_digest(proto, expected):
+                        match_found = True
+                authed = match_found
+                if authed:
+                    accept_protocol = "bearer"
             if not authed:
                 await ws.close(code=1008)
                 return

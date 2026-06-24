@@ -212,6 +212,12 @@ async def localmem_update(
             return {"error": f"Entry '{entry_id}' not found"}
 
         if importance is not None:
+            # Direct attribute assignment bypasses Entry's Pydantic field
+            # constraint (ge=0.0, le=1.0), so the bound has to be enforced
+            # here too. Without it a hostile client can set importance to an
+            # arbitrary value and dominate retrieval rankings.
+            if not (0.0 <= importance <= 1.0):
+                return {"error": f"importance {importance} out of range [0.0, 1.0]"}
             entry.importance = importance
         if tags is not None:
             entry.tags = tags

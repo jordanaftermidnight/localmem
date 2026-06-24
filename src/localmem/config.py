@@ -242,6 +242,14 @@ class RetentionConfig(BaseModel):
 
 SHARED_WING = "shared"
 
+# Wing names are interpolated into archive filesystem paths
+# (data/archive/<wing>/YYYY/MM/...). The charset has to be safe for path
+# components AND safe for JSON / WebSocket frames / Qdrant payload keys.
+# Lowercase alphanumerics plus `_` and `-`, must start with a letter or
+# digit, 1–63 chars. Used with re.fullmatch (not re.match — the latter's
+# `$` anchor still accepts a single trailing newline).
+_WING_NAME_PATTERN = re.compile(r"[a-z0-9][a-z0-9_-]{0,62}")
+
 
 class LocalmemConfig(BaseModel):
     # Agent-owned wing namespaces. Each value is an arbitrary string used as a
@@ -271,6 +279,12 @@ class LocalmemConfig(BaseModel):
         for w in self.wings:
             if not w or not isinstance(w, str):
                 raise ValueError(f"wing names must be non-empty strings, got {w!r}")
+            if not _WING_NAME_PATTERN.fullmatch(w):
+                raise ValueError(
+                    f"invalid wing name {w!r}: must match "
+                    f"{_WING_NAME_PATTERN.pattern} "
+                    f"(1–63 chars, lowercase alphanumeric + _ -, start with [a-z0-9])"
+                )
             if w in seen:
                 raise ValueError(f"duplicate wing name: {w!r}")
             seen.add(w)

@@ -39,7 +39,10 @@ class Entry(BaseModel):
     entry_type: EntryType = EntryType.GENERIC
     content: str
     summary: str | None = None
-    importance: float = 0.5
+    # Importance is bounded so a hostile client cannot dominate retrieval
+    # rankings or evade retention by writing absurd values. Pydantic enforces
+    # the range at instance construction and at MCP-tool argument coercion.
+    importance: float = Field(default=0.5, ge=0.0, le=1.0)
     tags: list[str] = Field(default_factory=list)
     refs: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)

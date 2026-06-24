@@ -67,7 +67,7 @@ class TestSqlWhereAllowlist:
         archive_dir = tmp_path / "archive"
         archive_dir.mkdir()
         archiver = Archiver(cfg, vector_store=None, metadata_store=None)  # type: ignore[arg-type]
-        with pytest.raises(ValueError, match="forbidden tokens"):
+        with pytest.raises(ValueError, match="AST validation"):
             archiver.query_sql(sql_where="wing='x'; DROP TABLE entries")
 
 

@@ -2,6 +2,64 @@
 
 All notable changes to localmem.
 
+## [0.1.1] — Security hardening pass
+
+Findings from a multi-model code/security review. Each item below is gated
+by a regression test under `tests/test_security_hardening_v011.py` or
+`tests/integration/test_ws_handshake.py`.
+
+### Security
+
+- **DuckDB SQL allowlist rewritten as AST validation.** The pre-v0.1.1
+  regex blocklist could not stop UNION-SELECT data exfiltration, subquery
+  shapes (`WHERE wing IN (SELECT secret FROM ...)`), DuckDB file readers
+  (`read_csv_auto('/etc/passwd')`, `read_text(...)`, `load_extension(...)`),
+  CHR-encoded keyword reconstruction, recursive-CTE resource exhaustion,
+  or qualified-column probes. `archiver.query_sql(sql_where=...)` now
+  parses the user clause with `sqlglot` (DuckDB dialect) and walks the
+  AST; only the explicit allowlist of node types (boolean ops,
+  comparisons, literals, schema-allowlisted bare columns, `IN`/`BETWEEN`/
+  `LIKE`/`IS`) survives. Any function call, subquery, `UNION`, `WITH`,
+  `CAST`, window, or qualified column rejects the clause. Lexical
+  pre-checks for `;`, `--`, and `/* */` close the parse-truncation hole
+  where `parse_one` silently stopped at the first statement separator.
+  Requires `pip install 'localmem[analytics]'` for `sqlglot>=23`.
+
+- **WebSocket bearer subprotocol no longer echoes the token.** Pre-v0.1.1
+  accepted `Sec-WebSocket-Protocol: bearer.<token>` and echoed the same
+  string back in the 101 Switching Protocols response — exposing the
+  token in proxy logs, browser devtools, and service worker scope. The
+  new handshake takes two subprotocol values
+  (`Sec-WebSocket-Protocol: bearer, <token>`), validates `<token>` with
+  `hmac.compare_digest` against the configured api_key, and accepts the
+  upgrade with `subprotocol="bearer"` only. The token never appears in
+  the response. **Breaking change** for any pre-v0.1.1 dashboard bundle
+  or custom WS client; rebuild the frontend and update clients to send
+  the new two-value subprotocol list.
+
+- **Wing names are charset-constrained.** Wing values flow into archive
+  filesystem paths, JSON payloads, WebSocket frames, and Qdrant payload
+  keys. `LocalmemConfig._validate_wings` now enforces
+  `^[a-z0-9][a-z0-9_-]{0,62}$` (via `re.fullmatch`, so a trailing
+  newline cannot slip past `$`). Rejects `..`, `/`, `\`, whitespace,
+  control characters, non-ASCII payloads (`café`, RTL overrides), and
+  >63-char strings before they can be interpolated into a path.
+
+- **`Entry.importance` is Pydantic-bounded.** Field now declares
+  `Field(default=0.5, ge=0.0, le=1.0)`. The `localmem_update` MCP tool
+  also enforces the bound explicitly (direct attribute assignment
+  bypasses Pydantic). Prevents a hostile client from setting
+  out-of-range importance to dominate retrieval rankings or evade
+  retention thresholds.
+
+### Tests
+
+- 367 unit tests (+62 from v0.1.0). New `tests/test_security_hardening_v011.py`
+  covers AST allowlist accept/reject cases, wing-name charset rules,
+  importance bounds. New `tests/integration/test_ws_handshake.py`
+  proves the WS server never echoes the token in the 101 response and
+  rejects the pre-v0.1.1 `bearer.<token>` form.
+
 ## [0.1.0] — Initial public release
 
 First open-source release. Everything below is shipped in v0.1.0.

@@ -36,19 +36,125 @@ from .vector_store import COLLECTION, VectorStore
 logger = logging.getLogger(__name__)
 
 
-_FORBIDDEN_SQL = re.compile(
-    r";|/\*|--|"
-    r"\b(?:DROP|DELETE|INSERT|UPDATE|ATTACH|DETACH|CREATE|ALTER|TRUNCATE|"
-    r"PRAGMA|COPY|EXPORT|IMPORT|LOAD|INSTALL|CALL|EXECUTE|"
-    r"BEGIN|COMMIT|ROLLBACK|TRANSACTION)\b",
-    re.IGNORECASE,
-)
+# Column allowlist for `archiver.query_sql(sql_where=...)`. The clause is run
+# against `read_json_auto(...)` over the entry archive — these are the only
+# fields that exist on stored entries (Entry.model_fields).
+_SAFE_COLUMNS = frozenset({
+    "id", "wing", "room", "agent_id", "entry_type",
+    "content", "summary", "importance",
+    "tags", "refs", "metadata",
+    "created_at", "updated_at",
+    "pinned", "is_summary",
+})
+
+# Pure, pre-evaluated scalar functions safe to expose in a WHERE clause.
+# Anything else (especially DuckDB's read_*/load_extension/CHR/list_*) is
+# rejected to prevent data exfiltration and arbitrary file access.
+_SAFE_FUNCTION_CLASSES: tuple[type, ...] = ()
 
 
 def _is_safe_sql_where(clause: str) -> bool:
-    """Reject statement separators, comments, and mutating keywords. Filter
-    expressions like `wing = 'default' AND created_at > '2026-01-01'` pass."""
-    return _FORBIDDEN_SQL.search(clause) is None
+    """Validate a user-supplied WHERE expression by parsing it into a sqlglot
+    AST (DuckDB dialect) and rejecting any node outside a strict allowlist.
+
+    Regex blocklists are insufficient for DuckDB — they cannot stop UNION
+    SELECT exfiltration, subquery shapes, function-based file readers
+    (`read_csv_auto('/etc/passwd')`), CHR-encoded keyword reconstruction, or
+    recursive-CTE resource exhaustion. The AST walk is structural: only the
+    node types we explicitly allow (boolean operators, comparisons, literals,
+    columns from `_SAFE_COLUMNS`, IN/BETWEEN/LIKE/IS) survive. Any function
+    call, subquery, star, cast, window, or qualified column rejects the
+    clause.
+    """
+    if clause is None or not clause.strip():
+        return False
+
+    # Lexical pre-checks. sqlglot.parse_one silently stops at the first `;`,
+    # so a clause like "1=1; DROP TABLE entries" would parse as just
+    # `WHERE 1=1` and the rest would still land in the interpolated SQL.
+    # `--` and `/* */` comments cause the same drift (everything after the
+    # comment is lost during parse but still present in the raw string we
+    # interpolate downstream). Reject all three before parsing.
+    if ";" in clause or "--" in clause or "/*" in clause or "*/" in clause:
+        return False
+
+    try:
+        import sqlglot
+        from sqlglot import exp
+    except ImportError:
+        # sqlglot ships with [analytics] alongside duckdb. If sqlglot is
+        # missing, fail closed.
+        return False
+
+    # parse() (plural) returns every top-level statement. Belt-and-suspenders
+    # vs the `;` pre-check above: if any extra statements leaked past, reject.
+    try:
+        statements = sqlglot.parse(
+            f"SELECT 1 FROM t WHERE {clause}", read="duckdb"
+        )
+    except sqlglot.errors.ParseError:
+        return False
+    if len(statements) != 1 or statements[0] is None:
+        return False
+    parsed = statements[0]
+
+    where = parsed.find(exp.Where)
+    if where is None:
+        return False
+
+    # Reject statements containing UNION / additional SELECT / WITH at any
+    # level — a UNION-SELECT exfiltration would parse if the user closed
+    # the WHERE with a paren and chained a UNION onto our outer SELECT.
+    if parsed.find(exp.Union) is not None:
+        return False
+    for sel in parsed.find_all(exp.Select):
+        if sel is parsed:
+            continue
+        return False
+    if parsed.find(exp.Subquery) is not None:
+        return False
+    if parsed.find(exp.With) is not None:
+        return False
+
+    # Walk every node in the WHERE expression — each must be allowlisted.
+    return all(_is_safe_node(node) for node in where.walk())
+
+
+def _is_safe_node(node) -> bool:
+    """True iff `node` is a sqlglot AST node type permitted inside a WHERE."""
+    from sqlglot import exp
+
+    # Structural pieces of any WHERE expression.
+    if isinstance(node, (
+        exp.Where,
+        exp.Literal, exp.Boolean, exp.Null,
+        exp.And, exp.Or, exp.Not, exp.Paren,
+        exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE,
+        exp.In, exp.Tuple, exp.Between,
+        exp.Like, exp.ILike, exp.Is,
+        exp.Neg,
+        # Identifier is the inner name token sqlglot wraps inside Column,
+        # Table, etc. walk() yields it as its own node — has to be allowed
+        # so legitimate `wing = 'x'` clauses can parse.
+        exp.Identifier,
+    )):
+        return True
+
+    # Allowlisted pure scalar functions go here. None today — kept as a hook
+    # so a future change can opt in by adding a specific function class.
+    if _SAFE_FUNCTION_CLASSES and isinstance(node, _SAFE_FUNCTION_CLASSES):
+        return True
+
+    # Columns: must be bare (no table./db./catalog. qualifier) and match the
+    # known entry-schema fields. Rejects `t.password`, `secrets.col`, etc.
+    if isinstance(node, exp.Column):
+        if node.table or node.db or node.catalog:
+            return False
+        return node.name in _SAFE_COLUMNS
+
+    # Everything else — function calls (exp.Func, exp.Anonymous), Star,
+    # Select, Subquery, Cast, Window, Union, CTE references, etc. — rejected.
+    return False
 
 
 @dataclass
@@ -475,9 +581,11 @@ class Archiver:
 
         if sql_where is not None and not _is_safe_sql_where(sql_where):
             raise ValueError(
-                "sql_where contains forbidden tokens (statement separators, "
-                "comments, or mutating keywords); only SELECT-side filter "
-                "expressions are accepted"
+                "sql_where failed AST validation. Only WHERE expressions "
+                "composed of allowlisted columns, literals, boolean ops, "
+                "comparisons, IN/BETWEEN/LIKE/IS NULL are accepted. "
+                "Function calls, subqueries, UNION, CTEs, and qualified "
+                "columns are rejected."
             )
 
         if not self._root.exists():

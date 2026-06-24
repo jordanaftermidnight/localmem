@@ -54,8 +54,14 @@ export function useWebSocket() {
       if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
       const token = getApiKey();
+      // Auth via the Sec-WebSocket-Protocol subprotocol list. The server
+      // sees ["bearer", <token>], accepts the handshake with subprotocol
+      // "bearer" only, and never echoes the token back. Sending the token
+      // as a separate subprotocol value (rather than concatenated as
+      // `bearer.<token>`) keeps it out of the 101 Switching Protocols
+      // response that proxies and devtools can see.
       const ws = token
-        ? new WebSocket(WS_URL, [`bearer.${token}`])
+        ? new WebSocket(WS_URL, ["bearer", token])
         : new WebSocket(WS_URL);
       wsRef.current = ws;
 
