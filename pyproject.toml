@@ -66,6 +66,43 @@ localmem = "localmem.cli:main"
 localmem-serve = "localmem.mcp_server:run"
 localmem-dashboard = "localmem.api.app:run"
 
+[tool.hatch.build]
+# sdist defaults to "everything not in VCS ignore" which historically swept in
+# local virtualenvs (.venv-smoke etc.) and produced 200+ MB tarballs with
+# broken absolute symlinks. Belt + suspenders: enumerate the include set so
+# only source + tests + the dashboard frontend source ride along.
+include = [
+  "src/localmem/**",
+  "tests/**",
+  "dashboard/src/**",
+  "dashboard/*.json",
+  "dashboard/*.html",
+  "dashboard/*.ts",
+  "dashboard/.env.example",
+  "deploy/**",
+  "docs/**",
+  "manifests/**",
+  "localmem.yaml",
+  "pyproject.toml",
+  "README.md",
+  "CHANGELOG.md",
+  "LICENSE",
+]
+exclude = [
+  "**/__pycache__/**",
+  "**/*.py[cod]",
+  "**/.DS_Store",
+  ".venv*/**",
+  "dashboard/node_modules/**",
+  "dashboard/dist/**",
+  "dist/**",
+  "data/**",
+  ".pytest_cache/**",
+  ".github/**",
+  ".githooks/**",
+  ".playwright-mcp/**",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/localmem"]
 

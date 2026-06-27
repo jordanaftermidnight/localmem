@@ -18,7 +18,8 @@ build/
 .eggs/
 
 # Virtual env
-.venv/
+.venv
+.venv-*
 venv/
 
 # IDE

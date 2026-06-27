@@ -1,0 +1,76 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+  # Manual trigger lets you retroactively publish an existing tag — e.g.
+  # the first release after wiring up the trusted-publisher config.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build from (tag, branch, or SHA)"
+        required: true
+        default: "v0.1.1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build tool
+        run: python -m pip install --upgrade build
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Verify distributions parse with twine
+        run: |
+          python -m pip install --upgrade twine
+          python -m twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-pypi:
+    name: Publish to PyPI (trusted publisher)
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/localmem
+    permissions:
+      # Required for OIDC trusted publishing — Actions exchanges a JWT
+      # with PyPI to prove the workflow's identity, no API token stored.
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Defaults: pypi.org, dist/ directory, fails on existing version.
+        # No `password` field — OIDC handles auth.
