@@ -1,5 +1,10 @@
 # localmem
 
+[![PyPI](https://img.shields.io/pypi/v/localmem.svg)](https://pypi.org/project/localmem/)
+[![Python](https://img.shields.io/pypi/pyversions/localmem.svg)](https://pypi.org/project/localmem/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/jordanaftermidnight/localmem/actions/workflows/ci.yml/badge.svg)](https://github.com/jordanaftermidnight/localmem/actions/workflows/ci.yml)
+
 **Local-first multi-agent memory MCP server.** Persistent storage for LLM
 agents — hybrid (dense + sparse) vector search, behavioral pattern graphs,
 temporal knowledge triples, layered wake-up context, lifecycle management,
@@ -31,25 +36,42 @@ single-agent knowledge graph. Real agent systems need more:
 ## Quick start
 
 ```bash
-git clone https://github.com/jordanaftermidnight/localmem.git
-cd localmem
-pip install -e ".[dev]"
+# Install from PyPI (core only — vector + graph + SQLite + MCP server)
+pip install localmem
 
-# 1. Edit localmem.yaml — at minimum list your agent wings:
-#      wings:
-#        - my_assistant
-#
-# 2. Start the MCP server:
-localmem serve                  # SSE on http://localhost:8781
+# Or grab the dashboard sidecar + DuckDB-backed archive query at the same time
+pip install 'localmem[dashboard,analytics]'
 
-# 3. (Optional) Start the read-only dashboard:
-pip install -e ".[dashboard]"
-localmem dashboard              # REST + WS on http://localhost:8782
-( cd dashboard && npm install && npm run dev )   # UI on http://localhost:5173
+# Write a minimal config — at least list your agent wings:
+cat > localmem.yaml <<'EOF'
+wings:
+  - my_assistant
+EOF
+
+# Start the MCP server (SSE on http://localhost:8781)
+localmem -c localmem.yaml serve
 ```
 
 Connect any MCP client to `http://localhost:8781/sse` and the 22 tools below
 become available.
+
+**Dashboard (optional, read-only):**
+
+```bash
+pip install 'localmem[dashboard]'
+localmem -c localmem.yaml dashboard      # REST + WS on http://localhost:8782
+```
+
+The prebuilt dashboard bundle is not on PyPI — clone the repo if you want the
+browser UI, or proxy a third-party MCP frontend to the SSE endpoint.
+
+**Working from source (contributing or pinning a specific commit):**
+
+```bash
+git clone https://github.com/jordanaftermidnight/localmem.git
+cd localmem
+pip install -e '.[dev,dashboard,analytics]'
+```
 
 ## MCP tools
 

@@ -11,12 +11,15 @@ the observer dashboard stack so the two can later share a shell.
 ## Install
 
 ```bash
-# Backend (FastAPI sidecar)
-pip install -e ".[dashboard]"
+# Backend (FastAPI sidecar) — from PyPI
+pip install 'localmem[dashboard]'
 
-# Frontend
-cd dashboard
+# Frontend bundle is not on PyPI; clone the repo and build it.
+git clone https://github.com/jordanaftermidnight/localmem.git
+cd localmem/dashboard
 npm install
+npm run build       # production bundle → dashboard/dist/
+# (or: npm run dev for the Vite dev server with proxying to :8782)
 ```
 
 ## Run

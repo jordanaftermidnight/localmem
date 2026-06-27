@@ -17,8 +17,10 @@ change for custom WS clients.
 
 **Mechanical steps:**
 
-1. **Reinstall.** `pip install -e ".[dashboard]"` (the
-   `[observability]` and `[analytics]` extras are still optional).
+1. **Upgrade.** `pip install --upgrade 'localmem[dashboard]'`
+   (or `pip install -e '.[dashboard]'` from a source checkout). The
+   `[analytics]` extras remain optional but now also pull `sqlglot`
+   for the AST-validated archive SQL query path.
 2. **Add the new `storage` keys** (or run the updated setup script,
    which writes them automatically):
 

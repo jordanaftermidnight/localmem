@@ -125,8 +125,9 @@ localmem archive restore <entry-id> # promote cold → hot
 ```
 
 `archive sql` runs DuckDB against `read_json_auto(<glob>)` over the hive-
-partitioned files. Install with `pip install -e '.[analytics]'` for the
-DuckDB dependency.
+partitioned files. Install the analytics extras to enable it:
+`pip install 'localmem[analytics]'` (pulls in `duckdb` + `sqlglot` — the
+latter AST-validates user-supplied WHERE clauses; see v0.1.1 in CHANGELOG).
 
 `archive search` decompresses matching files into a temporary in-memory
 Qdrant collection, runs hybrid search, drops the collection. Slow by
