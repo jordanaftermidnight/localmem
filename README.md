@@ -35,20 +35,25 @@ single-agent knowledge graph. Real agent systems need more:
 
 ## Quick start
 
-```bash
-# Install from PyPI (core only — vector + graph + SQLite + MCP server)
-pip install localmem
+> **Use a virtualenv.** Recent macOS / Homebrew / Debian Python installs are
+> "externally managed" (PEP 668) and `pip install localmem` directly will
+> refuse. A dedicated venv also keeps the `localmem` console script on `PATH`
+> automatically when activated.
 
-# Or grab the dashboard sidecar + DuckDB-backed archive query at the same time
+```bash
+# 1. Create a venv (use Python 3.13 — 3.14 + Apple Silicon has a known
+#    sentence-transformers shutdown issue, see Known issues below)
+python3.13 -m venv ~/.venvs/localmem
+source ~/.venvs/localmem/bin/activate
+
+# 2. Install from PyPI
 pip install 'localmem[dashboard,analytics]'
 
-# Write a minimal config — at least list your agent wings:
-cat > localmem.yaml <<'EOF'
-wings:
-  - my_assistant
-EOF
+# 3. Scaffold a working config + data directory
+mkdir -p ~/localmem-data && cd ~/localmem-data
+localmem init --wing my_assistant --dashboard
 
-# Start the MCP server (SSE on http://localhost:8781)
+# 4. Start the MCP server (SSE on http://localhost:8781)
 localmem -c localmem.yaml serve
 ```
 
@@ -58,18 +63,43 @@ become available.
 **Dashboard (optional, read-only):**
 
 ```bash
-pip install 'localmem[dashboard]'
-localmem -c localmem.yaml dashboard      # REST + WS on http://localhost:8782
+# In another terminal (venv active):
+localmem -c localmem.yaml dashboard            # REST + WS on http://localhost:8782
+
+# The prebuilt React frontend isn't shipped on PyPI yet. To get the UI:
+git clone https://github.com/jordanaftermidnight/localmem.git ~/localmem-source
+cd ~/localmem-source/dashboard
+npm install
+VITE_API_URL=http://localhost:8782 VITE_WS_URL=ws://localhost:8782/ws npm run build
+cd dist && python3 -m http.server 8785
 ```
 
-The prebuilt dashboard bundle is not on PyPI — clone the repo if you want the
-browser UI, or proxy a third-party MCP frontend to the SSE endpoint.
+Then open http://localhost:8785.
+
+**Headless / always-on (macOS LaunchAgents):**
+
+For a server that survives logout, reboot, and crashes, generate + load the
+LaunchAgents in one command (after the Quick start above is working):
+
+```bash
+git clone https://github.com/jordanaftermidnight/localmem.git ~/localmem-source 2>/dev/null
+python3 ~/localmem-source/deploy/setup-launchd.py --load
+launchctl list | grep localmem
+```
+
+Three services come up: `com.localmem.serve` (:8781), `com.localmem.dashboard`
+(:8782), `com.localmem.frontend` (:8785). All have `RunAtLoad=true` and
+`KeepAlive=true` — they auto-start on login and respawn on crash. Combined
+with Docker Desktop's "start on login" + `--restart unless-stopped` on the
+Qdrant container (see [docs/DEPLOY.md](docs/DEPLOY.md) when written), the
+stack runs entirely headless.
 
 **Working from source (contributing or pinning a specific commit):**
 
 ```bash
 git clone https://github.com/jordanaftermidnight/localmem.git
 cd localmem
+python3.13 -m venv .venv && source .venv/bin/activate
 pip install -e '.[dev,dashboard,analytics]'
 ```
 

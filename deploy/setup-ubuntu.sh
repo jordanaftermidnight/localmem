@@ -278,7 +278,7 @@ fi
 echo ""
 echo "=== Setup complete ==="
 echo ""
-echo "localmem v0.1.1"
+echo "localmem v0.1.2"
 echo "  Binary:  $INSTALL_DIR/.venv/bin/localmem-serve"
 echo "  Config:  $CONFIG_DIR/localmem.yaml"
 echo "  Data:    $DATA_DIR/"

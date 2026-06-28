@@ -1,17 +1,24 @@
 """Generate launchd plists for localmem on macOS.
 
-Run as:  python3 deploy/setup-launchd.py
-   or:   curl -sL https://raw.githubusercontent.com/jordanaftermidnight/localmem/main/deploy/setup-launchd.py | python3 -
+Quick start (recommended — also loads + kickstarts the services):
+    python3 deploy/setup-launchd.py --load
+
+Or write-only (review plists before loading manually):
+    python3 deploy/setup-launchd.py
 
 Writes three LaunchAgent plists to ~/Library/LaunchAgents/:
   - com.localmem.serve     — MCP server on port 8781
   - com.localmem.dashboard — dashboard backend on port 8782
   - com.localmem.frontend  — static frontend on port 8785
 
-Then load each one:
-  launchctl load -w ~/Library/LaunchAgents/com.localmem.serve.plist
-  launchctl load -w ~/Library/LaunchAgents/com.localmem.dashboard.plist
-  launchctl load -w ~/Library/LaunchAgents/com.localmem.frontend.plist
+With --load, also runs the modern launchctl sequence:
+    launchctl bootout   gui/$(id -u)/com.localmem.<svc>     # idempotent unload
+    launchctl bootstrap gui/$(id -u) <plist>                # modern load
+    launchctl kickstart -k gui/$(id -u)/com.localmem.<svc>  # force start now
+
+(The old `launchctl load` is legacy and gets stuck in the "submitted but
+won't run" state on modern macOS; bootstrap+kickstart is the canonical
+sequence for Catalina and later.)
 
 Assumes the canonical layout from the README's PyPI install path:
   - venv at  ~/.venvs/localmem/
@@ -24,12 +31,62 @@ Override any of these via environment variables before running:
 
 from __future__ import annotations
 
+import argparse
 import os
 import pathlib
+import shutil
+import subprocess
 import sys
 
 
+def _launchctl(args: list[str]) -> tuple[int, str]:
+    """Run launchctl with the given args, returning (returncode, combined output)."""
+    proc = subprocess.run(
+        ["launchctl", *args],
+        capture_output=True,
+        text=True,
+    )
+    return proc.returncode, (proc.stdout + proc.stderr).strip()
+
+
+def _load_service(label: str, plist_path: pathlib.Path) -> None:
+    """Bootout (idempotent) + bootstrap + kickstart the service.
+
+    Uses the modern domain-aware commands. `bootout` is run with 2>/dev/null
+    equivalent — failures are expected when the service isn't loaded yet.
+    """
+    uid = os.getuid()
+    domain = f"gui/{uid}"
+    target = f"{domain}/{label}"
+
+    # bootout — clears any prior state; non-zero is expected and OK
+    _launchctl(["bootout", target])
+
+    rc, out = _launchctl(["bootstrap", domain, str(plist_path)])
+    if rc != 0:
+        print(f"  WARN bootstrap {label}: {out}", file=sys.stderr)
+        return
+
+    rc, out = _launchctl(["kickstart", "-k", target])
+    if rc != 0:
+        print(f"  WARN kickstart {label}: {out}", file=sys.stderr)
+        return
+
+    print(f"  loaded {label}")
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Generate (and optionally load) localmem LaunchAgents on macOS."
+    )
+    parser.add_argument(
+        "--load",
+        action="store_true",
+        help="Also run launchctl bootstrap + kickstart for each service. "
+             "Without this, only the .plist files are written.",
+    )
+    args = parser.parse_args()
+
     HOME = pathlib.Path.home()
 
     VENV = pathlib.Path(os.environ.get("LOCALMEM_VENV", HOME / ".venvs/localmem"))
@@ -93,18 +150,34 @@ def main() -> int:
         ),
     ]
 
-    for label, args, workdir in services:
+    written: list[tuple[str, pathlib.Path]] = []
+    for label, prog_args, workdir in services:
         path = AGENTS / f"{label}.plist"
-        path.write_text(plist_xml(label, args, workdir))
+        path.write_text(plist_xml(label, prog_args, workdir))
         print(f"  wrote {path}")
+        written.append((label, path))
 
-    print()
-    print("Next: load each one with launchctl —")
-    for label, _, _ in services:
-        print(f"  launchctl load -w {AGENTS}/{label}.plist")
-    print()
-    print("Then check status:")
-    print("  launchctl list | grep localmem")
+    if args.load:
+        print()
+        print("Loading services (bootout → bootstrap → kickstart) ...")
+        if shutil.which("launchctl") is None:
+            print("  ERROR: launchctl not found in PATH — are you on macOS?",
+                  file=sys.stderr)
+            return 2
+        for label, path in written:
+            _load_service(label, path)
+        print()
+        print("Check status: launchctl list | grep localmem")
+        print("Tail logs:    tail -f ~/localmem-data/logs/com.localmem.*.log")
+    else:
+        print()
+        print("Plists written but NOT loaded. To load them now, re-run with --load:")
+        print("  python3 deploy/setup-launchd.py --load")
+        print("Or load manually (modern sequence):")
+        for label, path in written:
+            print(f"  launchctl bootout   gui/$(id -u)/{label} 2>/dev/null")
+            print(f"  launchctl bootstrap gui/$(id -u) {path}")
+            print(f"  launchctl kickstart -k gui/$(id -u)/{label}")
     return 0
 
 

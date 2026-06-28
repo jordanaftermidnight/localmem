@@ -1,7 +1,7 @@
 {
   "name": "localmem-dashboard",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Read-only dashboard for the localmem MCP memory server",
   "type": "module",
   "scripts": {

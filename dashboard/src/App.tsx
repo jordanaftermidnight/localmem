@@ -55,7 +55,7 @@ function Header() {
       background: theme.panelBg, fontSize: 12,
     }}>
       <span style={{ fontWeight: 700, color: theme.accent, letterSpacing: 1 }}>LOCALMEM</span>
-      <span style={{ color: theme.textDim }}>v0.1.1</span>
+      <span style={{ color: theme.textDim }}>v0.1.2</span>
       {health && (
         <>
           {sep}

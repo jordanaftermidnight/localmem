@@ -2,6 +2,47 @@
 
 All notable changes to localmem.
 
+## [0.1.2] — Onboarding streamline
+
+Direct response to v0.1.1's onboarding friction (hand-written YAML, paste
+mangling, legacy `launchctl load` getting stuck in "submitted but won't
+run" state, multi-Python collisions). No security or behavioral changes
+to the running server.
+
+### New
+
+- **`localmem init` CLI command.** Scaffolds a working `localmem.yaml` +
+  data directory with sensible defaults. Replaces the previous
+  hand-written YAML path that broke under terminal auto-indent / paste
+  mangling. Flags: `--wing` (repeatable), `--dashboard`, `--qdrant-mode
+  local|server`, `--qdrant-url`, `--force`, `--data-dir`. Prints
+  next-step instructions on success.
+
+- **`deploy/setup-launchd.py --load` flag.** Generates the three macOS
+  LaunchAgents AND runs the modern `bootout` → `bootstrap` → `kickstart`
+  sequence in one shot. The old `launchctl load -w` path is legacy on
+  Catalina+ and frequently leaves services in a "submitted but won't
+  run" state (the v0.1.1 path users had to debug by hand). The new flag
+  defaults to off so the write-only behavior is preserved when callers
+  want to inspect plists before loading.
+
+### Docs
+
+- **README Quick start rewritten for the venv-first path** that actually
+  works on modern macOS (PEP 668 / externally-managed Pythons). Lists
+  Python 3.13 explicitly because 3.14 + Apple Silicon has a known
+  sentence-transformers shutdown bug.
+- **Headless / always-on section** documenting the `setup-launchd.py
+  --load` one-liner for users who want the stack to survive logout +
+  reboot.
+
+### Tests
+
+- New `tests/test_init_command.py` covering: default scaffold, multiple
+  wings, dashboard toggle, Qdrant local vs server, refuse-without-force
+  on existing config, force-overwrite, generated YAML round-trips
+  through `load_config`, next-step prompts.
+
 ## [0.1.1] — Security hardening pass
 
 Findings from a multi-model code/security review. Each item below is gated

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "localmem"
-version = "0.1.1"
+version = "0.1.2"
 description = "Local-first multi-agent memory MCP server with hybrid search, behavioral graphs, knowledge triples, and lifecycle management"
 readme = "README.md"
 requires-python = ">=3.10"

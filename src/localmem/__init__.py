@@ -6,7 +6,7 @@ plus lifecycle management (consolidation + archive) — all served over MCP/SSE
 with an optional read-only browser dashboard.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 from .config import LocalmemConfig, load_config
 from .contradiction import detect_and_resolve
