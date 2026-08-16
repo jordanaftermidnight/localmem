@@ -39,7 +39,7 @@ export function EntryBrowser() {
   }, [filter, pinnedOnly, hideSummaries, setSelected]);
 
   useEffect(() => {
-    if (!selectedId) { setDetail(null); return; }
+    if (!selectedId) return;
     api.entry(selectedId).then(setDetail).catch(() => setDetail(null));
   }, [selectedId]);
 
@@ -85,7 +85,7 @@ export function EntryBrowser() {
         >Hide summaries</button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: detail ? "1fr 1fr" : "1fr", gap: 8, minHeight: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: selectedId && detail ? "1fr 1fr" : "1fr", gap: 8, minHeight: 0 }}>
         <div style={{ overflow: "auto", border: `1px solid ${theme.panelBorder}`, borderRadius: 4 }}>
           {items.map((it) => (
             <div
@@ -119,7 +119,7 @@ export function EntryBrowser() {
           {items.length === 0 && <div style={{ padding: 12, color: theme.textDim }}>No entries.</div>}
         </div>
 
-        {detail && (
+        {selectedId && detail && (
           <div style={{ overflow: "auto", padding: 10, border: `1px solid ${theme.panelBorder}`, borderRadius: 4 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <span style={{ color: wingColors[detail.wing], fontSize: 11 }}>
