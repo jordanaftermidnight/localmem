@@ -20,7 +20,7 @@ export function TriplesPanel() {
   }, [subject, predicate, activeOnly]);
 
   useEffect(() => {
-    if (!timelineFor) { setTimeline([]); return; }
+    if (!timelineFor) return;
     api.tripleTimeline(timelineFor.subject, timelineFor.predicate)
       .then(setTimeline).catch(() => setTimeline([]));
   }, [timelineFor]);
