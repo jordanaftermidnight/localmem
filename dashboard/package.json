@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "dockview-react": "^7.0.2",
+    "dockview-react": "^8.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-force-graph-2d": "^1.27.0",
